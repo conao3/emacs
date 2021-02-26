@@ -28,6 +28,30 @@
 (require 'ert)
 (require 'ert-x)
 
+(ert-deftest lread-raw-string-1 ()
+  (should (string-equal
+           (read "#r\"\\(?:def\\(?:macro\\|un\\)\\)\"")
+           "\\(?:def\\(?:macro\\|un\\)\\)")))
+
+(ert-deftest lread-raw-string-2 ()
+  (should (string-equal
+           (read "#r\"\\n\"")
+           "\\n")))
+
+(ert-deftest lread-raw-string-usage-1 ()
+  (should (equal
+           (let ((str "(defun leaf () nil)"))
+             (string-match "(\\(def\\(?:macro\\|un\\)\\) \\([^ ]+\\)" str)
+             (list (match-string 1 str) (match-string 2 str)))
+           '("defun" "leaf"))))
+
+(ert-deftest lread-raw-string-usage-2 ()
+  (should (equal
+           (let ((str "(defun leaf () nil)"))
+             (string-match #r"(\(def\(?:macro\|un\)\) \([^ ]+\)" str)
+             (list (match-string 1 str) (match-string 2 str)))
+           '("defun" "leaf"))))
+
 (ert-deftest lread-char-number ()
   (should (equal (read "?\\N{U+A817}") #xA817)))
 
