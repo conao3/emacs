@@ -2869,69 +2869,11 @@ read1 (Lisp_Object readcharfun, int *pch, bool first_in_list)
 		      end = read_buffer + read_buffer_size;
 		    }
 
-		  if (ch == '\\')
-		    {
-		      int modifiers;
-
-		      ch = read_escape (readcharfun, 1);
-
-		      /* CH is -1 if \ newline or \ space has just been seen.  */
-		      if (ch == -1)
-			{
-			  if (p == read_buffer)
-			    cancel = true;
-			  continue;
-			}
-
-		      modifiers = ch & CHAR_MODIFIER_MASK;
-		      ch = ch & ~CHAR_MODIFIER_MASK;
-
-		      if (CHAR_BYTE8_P (ch))
-			force_singlebyte = true;
-		      else if (! ASCII_CHAR_P (ch))
-			force_multibyte = true;
-		      else		/* I.e. ASCII_CHAR_P (ch).  */
-			{
-			  /* Allow `\C- ' and `\C-?'.  */
-			  if (modifiers == CHAR_CTL)
-			    {
-			      if (ch == ' ')
-				ch = 0, modifiers = 0;
-			      else if (ch == '?')
-				ch = 127, modifiers = 0;
-			    }
-			  if (modifiers & CHAR_SHIFT)
-			    {
-			      /* Shift modifier is valid only with [A-Za-z].  */
-			      if (ch >= 'A' && ch <= 'Z')
-				modifiers &= ~CHAR_SHIFT;
-			      else if (ch >= 'a' && ch <= 'z')
-				ch -= ('a' - 'A'), modifiers &= ~CHAR_SHIFT;
-			    }
-
-			  if (modifiers & CHAR_META)
-			    {
-			      /* Move the meta bit to the right place for a
-				 string.  */
-			      modifiers &= ~CHAR_META;
-			      ch = BYTE8_TO_CHAR (ch | 0x80);
-			      force_singlebyte = true;
-			    }
-			}
-
-		      /* Any modifiers remaining are invalid.  */
-		      if (modifiers)
-			invalid_syntax ("Invalid modifier in string", readcharfun);
-		      p += CHAR_STRING (ch, (unsigned char *) p);
-		    }
-		  else
-		    {
-		      p += CHAR_STRING (ch, (unsigned char *) p);
-		      if (CHAR_BYTE8_P (ch))
-			force_singlebyte = true;
-		      else if (! ASCII_CHAR_P (ch))
-			force_multibyte = true;
-		    }
+		  p += CHAR_STRING (ch, (unsigned char *) p);
+		  if (CHAR_BYTE8_P (ch))
+		    force_singlebyte = true;
+		  else if (! ASCII_CHAR_P (ch))
+		    force_multibyte = true;
 		  nchars++;
 		}
 
