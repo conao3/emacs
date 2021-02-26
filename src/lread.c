@@ -2835,6 +2835,131 @@ read1 (Lisp_Object readcharfun, int *pch, bool first_in_list)
 
     case '#':
       c = READCHAR;
+      if (c == 'r')
+	{
+	  c = READCHAR;
+	  if (c == '"')
+	    {
+	      ptrdiff_t count = SPECPDL_INDEX ();
+	      char *read_buffer = stackbuf;
+	      ptrdiff_t read_buffer_size = sizeof stackbuf;
+	      char *heapbuf = NULL;
+	      char *p = read_buffer;
+	      char *end = read_buffer + read_buffer_size;
+	      int ch;
+	      /* True if we saw an escape sequence specifying
+		 a multibyte character.  */
+	      bool force_multibyte = false;
+	      /* True if we saw an escape sequence specifying
+		 a single-byte character.  */
+	      bool force_singlebyte = false;
+	      bool cancel = false;
+	      ptrdiff_t nchars = 0;
+
+	      while ((ch = READCHAR) >= 0
+		     && ch != '\"')
+		{
+		  if (end - p < MAX_MULTIBYTE_LENGTH)
+		    {
+		      ptrdiff_t offset = p - read_buffer;
+		      read_buffer = grow_read_buffer (read_buffer, offset,
+						      &heapbuf, &read_buffer_size,
+						      count);
+		      p = read_buffer + offset;
+		      end = read_buffer + read_buffer_size;
+		    }
+
+		  if (ch == '\\')
+		    {
+		      int modifiers;
+
+		      ch = read_escape (readcharfun, 1);
+
+		      /* CH is -1 if \ newline or \ space has just been seen.  */
+		      if (ch == -1)
+			{
+			  if (p == read_buffer)
+			    cancel = true;
+			  continue;
+			}
+
+		      modifiers = ch & CHAR_MODIFIER_MASK;
+		      ch = ch & ~CHAR_MODIFIER_MASK;
+
+		      if (CHAR_BYTE8_P (ch))
+			force_singlebyte = true;
+		      else if (! ASCII_CHAR_P (ch))
+			force_multibyte = true;
+		      else		/* I.e. ASCII_CHAR_P (ch).  */
+			{
+			  /* Allow `\C- ' and `\C-?'.  */
+			  if (modifiers == CHAR_CTL)
+			    {
+			      if (ch == ' ')
+				ch = 0, modifiers = 0;
+			      else if (ch == '?')
+				ch = 127, modifiers = 0;
+			    }
+			  if (modifiers & CHAR_SHIFT)
+			    {
+			      /* Shift modifier is valid only with [A-Za-z].  */
+			      if (ch >= 'A' && ch <= 'Z')
+				modifiers &= ~CHAR_SHIFT;
+			      else if (ch >= 'a' && ch <= 'z')
+				ch -= ('a' - 'A'), modifiers &= ~CHAR_SHIFT;
+			    }
+
+			  if (modifiers & CHAR_META)
+			    {
+			      /* Move the meta bit to the right place for a
+				 string.  */
+			      modifiers &= ~CHAR_META;
+			      ch = BYTE8_TO_CHAR (ch | 0x80);
+			      force_singlebyte = true;
+			    }
+			}
+
+		      /* Any modifiers remaining are invalid.  */
+		      if (modifiers)
+			invalid_syntax ("Invalid modifier in string", readcharfun);
+		      p += CHAR_STRING (ch, (unsigned char *) p);
+		    }
+		  else
+		    {
+		      p += CHAR_STRING (ch, (unsigned char *) p);
+		      if (CHAR_BYTE8_P (ch))
+			force_singlebyte = true;
+		      else if (! ASCII_CHAR_P (ch))
+			force_multibyte = true;
+		    }
+		  nchars++;
+		}
+
+	      if (ch < 0)
+		end_of_file_error ();
+
+	      /* If purifying, and string starts with \ newline,
+		 return zero instead.  This is for doc strings
+		 that we are really going to find in etc/DOC.nn.nn.  */
+	      if (!NILP (Vpurify_flag) && NILP (Vdoc_file_name) && cancel)
+		return unbind_to (count, make_fixnum (0));
+
+	      if (! force_multibyte && force_singlebyte)
+		{
+		  /* READ_BUFFER contains raw 8-bit bytes and no multibyte
+		     forms.  Convert it to unibyte.  */
+		  nchars = str_as_unibyte ((unsigned char *) read_buffer,
+					   p - read_buffer);
+		  p = read_buffer + nchars;
+		}
+
+	      Lisp_Object result
+		= make_specified_string (read_buffer, nchars, p - read_buffer,
+					 (force_multibyte
+					  || (p - read_buffer != nchars)));
+	      return unbind_to (count, result);
+	    }
+	}
       if (c == 's')
 	{
 	  c = READCHAR;
