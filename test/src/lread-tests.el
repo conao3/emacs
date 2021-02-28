@@ -50,7 +50,13 @@
            (let ((str "(defun leaf () nil)"))
              (string-match #r"(\(def\(?:macro\|un\)\) \([^ ]+\)" str)
              (list (match-string 1 str) (match-string 2 str)))
-           '("defun" "leaf"))))
+           '("defun" "leaf")))
+
+  (should (equal
+           (let ((str #r"(def\macro leaf () nil)"))
+             (string-match #r"(\(def\macro\) \([^ ]+\)" str)
+             (list (match-string 1 str) (match-string 2 str)))
+           '(#r"def\macro" "leaf"))))
 
 (ert-deftest lread-char-number ()
   (should (equal (read "?\\N{U+A817}") #xA817)))
