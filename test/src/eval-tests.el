@@ -226,4 +226,31 @@ expressions works for identifiers starting with period."
       (should (equal (string-trim (buffer-string))
                      "Error: (error \"Boo\")")))))
 
+(ert-deftest eval-tests/let ()
+  (should (equal (let (a)
+                   a)
+                 nil))
+
+  (should (equal (let (a b)
+                   (list a b))
+                 '(nil nil)))
+
+  (should (equal (let ((a 1))
+                   a)
+                 1))
+
+  (should (equal (let ((a 1) b)
+                   (list a b))
+                 '(1 nil)))
+
+  ;; (error "`let' bindings can have only one value-form" a 1 2)
+  (should-error (let ((a 1 2))
+                  a)
+                :type 'error)
+
+  ;; (wrong-type-argument symbolp (a))
+  (should-error (let (((a) 1))
+                  a)
+                :type 'wrong-type-argument))
+
 ;;; eval-tests.el ends here

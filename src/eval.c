@@ -1001,11 +1001,10 @@ usage: (let VARLIST BODY...)  */)
   /* Make space to hold the values to give the bound variables.  */
   EMACS_INT varlist_len = list_length (varlist);
   SAFE_ALLOCA_LISP (temps, varlist_len);
-  ptrdiff_t nvars = varlist_len;
 
   /* Compute the values and store them in `temps'.  */
 
-  for (argnum = 0; argnum < nvars && CONSP (varlist); argnum++)
+  for (argnum = 0; CONSP (varlist); argnum++)
     {
       maybe_quit ();
       elt = XCAR (varlist);
@@ -1017,12 +1016,11 @@ usage: (let VARLIST BODY...)  */)
       else
 	temps[argnum] = eval_sub (Fcar (Fcdr (elt)));
     }
-  nvars = argnum;
 
   lexenv = Vinternal_interpreter_environment;
 
   varlist = XCAR (args);
-  for (argnum = 0; argnum < nvars && CONSP (varlist); argnum++)
+  for (argnum = 0; CONSP (varlist); argnum++)
     {
       Lisp_Object var;
 
